@@ -1,4 +1,3 @@
-use adw::prelude::*;
 use relm4::prelude::*;
 
 pub(crate) struct Model;
