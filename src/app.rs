@@ -6,7 +6,7 @@ mod content;
 mod modals;
 mod settings;
 
-pub(crate) const APP_ID: &str = "your.app_id";  // TODO: Set app ID
+pub(crate) const APP_ID: &str = "com.github.tiago_vargas.pixel_art_app";
 
 pub(crate) struct AppModel {
     content: Controller<content::ContentModel>,
@@ -43,7 +43,7 @@ impl SimpleComponent for AppModel {
 
     view! {
         main_window = adw::ApplicationWindow {
-            set_title: Some("Template"),  // TODO: Set window title
+            set_title: Some("Pixel Art"),
             add_css_class: "devel",
 
             gtk::Box {

@@ -20,11 +20,11 @@ impl SimpleComponent for Model {
     view! {
         adw::AboutWindow {
             set_application_icon: "application-x-executable-symbolic",  // TODO: Set app icon
-            set_application_name: "Template",  // TODO: Set app name
-            set_developer_name: "Someone",  // TODO: Set developer name
+            set_application_name: "Pixel Art App",
+            set_developer_name: "Tiago Vargas Pereira de Oliveira",
             set_version: "0.1.0",  // TODO: Set version
 
-            set_website: "https://github.com/tiago-vargas/relm4-app-template",  // TODO: Set website
+            set_website: "https://github.com/tiago-vargas/pixel-art-app",
         }
     }
 

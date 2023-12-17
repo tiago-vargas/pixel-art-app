@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <schemalist>
-	<!-- TODO: Set ID -->
-	<!-- TODO: Set path -->
-	<!-- TODO: Rename file based on the ID -->
-	<schema id="your.app_id"
-	        path="/your/app_id/">
+	<schema id="com.github.tiago_vargas.pixel_art_app"
+	        path="/com/github/tiago_vargas/pixel_art_app/">
 		<key name="window-width" type="i">
 			<default>600</default>
 			<summary>Default window width</summary>
