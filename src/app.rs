@@ -44,7 +44,6 @@ impl SimpleComponent for AppModel {
     view! {
         main_window = adw::ApplicationWindow {
             set_title: Some("Pixel Art"),
-            add_css_class: "devel",
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
