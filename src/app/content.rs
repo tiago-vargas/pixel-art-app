@@ -14,6 +14,7 @@ pub(crate) struct ContentInit;
 pub(crate) enum ContentInput {
     DrawEmptyGrid,
     Paint(f64, f64),
+    Erase(f64, f64),
 }
 
 #[derive(Debug)]
@@ -42,8 +43,18 @@ impl SimpleComponent for ContentModel {
                 set_content_height: 256,
 
                 add_controller = gtk::GestureClick {
+                    set_button: gtk::gdk::BUTTON_PRIMARY,
+
                     connect_pressed[sender] => move |_, _, x, y| {
                         sender.input(Self::Input::Paint(x, y));
+                    },
+                },
+
+                add_controller = gtk::GestureClick {
+                    set_button: gtk::gdk::BUTTON_SECONDARY,
+
+                    connect_pressed[sender] => move |_, _, x, y| {
+                        sender.input(Self::Input::Erase(x, y));
                     },
                 },
 
@@ -79,6 +90,11 @@ impl SimpleComponent for ContentModel {
                 let column = (x / CELL_SIZE) as usize;
                 let line = (y / CELL_SIZE) as usize;
                 self.grid[line][column] = 1;
+            }
+            Self::Input::Erase(x, y) => {
+                let column = (x / CELL_SIZE) as usize;
+                let line = (y / CELL_SIZE) as usize;
+                self.grid[line][column] = 0;
             }
         }
 
