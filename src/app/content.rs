@@ -108,4 +108,24 @@ fn redraw(cx: &gtk::cairo::Context, grid: &[[u8; 16]; 16]) {
                 .expect("Should be able to fill cell");
         }
     }
+
+    // Draw the grid
+    cx.set_source_rgba(0.5, 0.5, 0.5, 0.5);  // Gray
+    cx.set_line_width(1.0);
+    // To draw a 1-pixel wide line, you have to aim to the "center" of the pixel
+    // Otherwise, it gets blurred
+    for line in 0..grid.len() {
+        // Horizontal lines
+        let y = (line as f64) * CELL_SIZE;
+        cx.move_to(0.0, y - 0.5);  // Discount half a pixel
+        cx.line_to(256.0, y - 0.5);  // Discount half a pixel
+    }
+    for column in 0..grid[0].len() {
+        // Vertical lines
+        let x = (column as f64) * CELL_SIZE;
+        cx.move_to(x - 0.5, 0.0);  // Discount half a pixel
+        cx.line_to(x - 0.5, 256.0);  // Discount half a pixel
+    }
+    cx.stroke()
+        .expect("Should be able to stroke line");
 }
