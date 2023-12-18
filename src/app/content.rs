@@ -1,12 +1,20 @@
 use gtk::prelude::*;
-use relm4::prelude::*;
+use relm4::{prelude::*, drawing::DrawHandler};
 
-pub(crate) struct ContentModel;
+const CELL_SIZE: f64 = 16.0;  // In pixels
+
+pub(crate) struct ContentModel {
+    grid: [[u8; 16]; 16],
+    handler: DrawHandler,
+}
 
 pub(crate) struct ContentInit;
 
 #[derive(Debug)]
-pub(crate) enum ContentInput {}
+pub(crate) enum ContentInput {
+    DrawEmptyGrid,
+    Paint(f64, f64),
+}
 
 #[derive(Debug)]
 pub(crate) enum ContentOutput {}
@@ -19,28 +27,85 @@ impl SimpleComponent for ContentModel {
     type Output = ContentOutput;
 
     view! {
-        #[root]
-        gtk::Label {
-            set_label: "Hello, World!",
-            set_margin_all: 4,
-            set_css_classes: &["title-1"],
+        gtk::Box {
             set_vexpand: true,
+            set_hexpand: true,
+            set_halign: gtk::Align::Center,
+
+            // Named widgets need to have a container, so that's why I'm
+            // wrapping this in a `gtk::Box`
+            #[local_ref]
+            area -> gtk::DrawingArea {
+                set_valign: gtk::Align::Center,
+
+                set_content_width: 256,
+                set_content_height: 256,
+
+                add_controller = gtk::GestureClick {
+                    connect_pressed[sender] => move |_, _, x, y| {
+                        sender.input(Self::Input::Paint(x, y));
+                    },
+                },
+
+                connect_resize[sender] => move |_, _, _| {
+                    sender.input(Self::Input::DrawEmptyGrid);
+                },
+            }
         }
     }
 
     fn init(
         _init: Self::Init,
         root: &Self::Root,
-        _sender: ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = Self;
+        let model = Self {
+            grid: [[0; 16]; 16],
+            handler: DrawHandler::new(),
+        };
 
+        let area = model.handler.drawing_area();
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
     }
 
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
-        match message {}
+        let cx = self.handler.get_context();
+
+        match message {
+            Self::Input::DrawEmptyGrid => (),
+            Self::Input::Paint(x, y) => {
+                let column = (x / CELL_SIZE) as usize;
+                let line = (y / CELL_SIZE) as usize;
+                self.grid[line][column] = 1;
+            }
+        }
+
+        redraw(&cx, &self.grid);
+    }
+}
+
+fn redraw(cx: &gtk::cairo::Context, grid: &[[u8; 16]; 16]) {
+    for (i, row) in grid.iter().enumerate() {
+        let y = (i as f64) * CELL_SIZE;
+
+        for (j, &cell) in row.iter().enumerate() {
+            let x = (j as f64) * CELL_SIZE;
+
+            if cell == 1 {
+                // Lit
+                cx.set_source_rgb(0.0, 0.0, 0.0);  // Black
+            } else if cell == 0 {
+                // Unlit
+                cx.set_source_rgb(1.0, 1.0, 1.0);  // White
+            } else {
+                unreachable!("Cell values should be either 0 or 1");
+            }
+
+            cx.rectangle(x as f64, y as f64, CELL_SIZE, CELL_SIZE);
+            cx.fill()
+                .expect("Should be able to fill cell");
+        }
     }
 }
