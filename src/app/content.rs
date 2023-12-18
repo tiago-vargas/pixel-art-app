@@ -68,6 +68,16 @@ impl SimpleComponent for ContentModel {
                     },
                 },
 
+                add_controller = gtk::GestureDrag {
+                    set_button: gtk::gdk::BUTTON_SECONDARY,
+
+                    connect_drag_update[sender] => move |gesture, dx, dy| {
+                        let (x, y) = gesture.start_point()
+                            .expect("If it started, then it has a starting point");
+                        sender.input(Self::Input::Erase(x + dx, y + dy));
+                    },
+                },
+
                 connect_resize[sender] => move |_, _, _| {
                     sender.input(Self::Input::DrawEmptyGrid);
                 },
