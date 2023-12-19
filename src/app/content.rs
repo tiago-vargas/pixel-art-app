@@ -1,12 +1,21 @@
 use gtk::prelude::*;
-use relm4::prelude::*;
+use relm4::{prelude::*, drawing::DrawHandler};
 
-pub(crate) struct ContentModel;
+const CELL_SIZE: f64 = 16.0;  // In pixels
+
+pub(crate) struct ContentModel {
+    grid: [[u8; 16]; 16],
+    handler: DrawHandler,
+}
 
 pub(crate) struct ContentInit;
 
 #[derive(Debug)]
-pub(crate) enum ContentInput {}
+pub(crate) enum ContentInput {
+    DrawEmptyGrid,
+    Paint(f64, f64),
+    Erase(f64, f64),
+}
 
 #[derive(Debug)]
 pub(crate) enum ContentOutput {}
@@ -19,28 +28,156 @@ impl SimpleComponent for ContentModel {
     type Output = ContentOutput;
 
     view! {
-        #[root]
-        gtk::Label {
-            set_label: "Hello, World!",
-            set_margin_all: 4,
-            set_css_classes: &["title-1"],
+        gtk::Box {
             set_vexpand: true,
+            set_hexpand: true,
+            set_halign: gtk::Align::Center,
+
+            // Named widgets need to have a container, so that's why I'm
+            // wrapping this in a `gtk::Box`
+            #[local_ref]
+            area -> gtk::DrawingArea {
+                set_valign: gtk::Align::Center,
+
+                set_content_width: 256,
+                set_content_height: 256,
+
+                add_controller = gtk::GestureClick {
+                    set_button: gtk::gdk::BUTTON_PRIMARY,
+
+                    connect_pressed[sender] => move |_, _, x, y| {
+                        sender.input(Self::Input::Paint(x, y));
+                    },
+                },
+
+                add_controller = gtk::GestureClick {
+                    set_button: gtk::gdk::BUTTON_SECONDARY,
+
+                    connect_pressed[sender] => move |_, _, x, y| {
+                        sender.input(Self::Input::Erase(x, y));
+                    },
+                },
+
+                add_controller = gtk::GestureDrag {
+                    set_button: gtk::gdk::BUTTON_PRIMARY,
+
+                    connect_drag_update[sender] => move |gesture, dx, dy| {
+                        let (x, y) = gesture.start_point()
+                            .expect("If it started, then it has a starting point");
+                        sender.input(Self::Input::Paint(x + dx, y + dy));
+                    },
+                },
+
+                add_controller = gtk::GestureDrag {
+                    set_button: gtk::gdk::BUTTON_SECONDARY,
+
+                    connect_drag_update[sender] => move |gesture, dx, dy| {
+                        let (x, y) = gesture.start_point()
+                            .expect("If it started, then it has a starting point");
+                        sender.input(Self::Input::Erase(x + dx, y + dy));
+                    },
+                },
+
+                connect_resize[sender] => move |_, _, _| {
+                    sender.input(Self::Input::DrawEmptyGrid);
+                },
+            }
         }
     }
 
     fn init(
         _init: Self::Init,
         root: &Self::Root,
-        _sender: ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = Self;
+        let model = Self {
+            grid: [[0; 16]; 16],
+            handler: DrawHandler::new(),
+        };
 
+        let area = model.handler.drawing_area();
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
     }
 
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
-        match message {}
+        let cx = self.handler.get_context();
+
+        match message {
+            Self::Input::DrawEmptyGrid => (),
+            Self::Input::Paint(x, y) => {
+                let column = (x / CELL_SIZE) as usize;
+                let line = (y / CELL_SIZE) as usize;
+                if is_in_bounds(line, column, &self.grid) {
+                    self.grid[line][column] = 1;
+                }
+            }
+            Self::Input::Erase(x, y) => {
+                let column = (x / CELL_SIZE) as usize;
+                let line = (y / CELL_SIZE) as usize;
+                if is_in_bounds(line, column, &self.grid) {
+                    self.grid[line][column] = 0;
+                }
+            }
+        }
+
+        redraw(&cx, &self.grid);
     }
+}
+
+fn redraw(cx: &gtk::cairo::Context, grid: &[[u8; 16]; 16]) {
+    for (i, row) in grid.iter().enumerate() {
+        let y = (i as f64) * CELL_SIZE;
+
+        for (j, &cell) in row.iter().enumerate() {
+            let x = (j as f64) * CELL_SIZE;
+
+            if cell == 1 {
+                // Lit
+                cx.set_source_rgb(0.0, 0.0, 0.0);  // Black
+            } else if cell == 0 {
+                // Unlit
+                cx.set_source_rgb(1.0, 1.0, 1.0);  // White
+            } else {
+                unreachable!("Cell values should be either 0 or 1");
+            }
+
+            cx.rectangle(x as f64, y as f64, CELL_SIZE, CELL_SIZE);
+            cx.fill()
+                .expect("Should be able to fill cell");
+        }
+    }
+
+    // Draw the grid
+    cx.set_source_rgba(0.5, 0.5, 0.5, 0.5);  // Gray
+    cx.set_line_width(1.0);
+    // To draw a 1-pixel wide line, you have to aim to the "center" of the pixel
+    // Otherwise, it gets blurred
+    for line in 0..grid.len() {
+        // Horizontal lines
+        let y = (line as f64) * CELL_SIZE;
+        cx.move_to(0.0, y - 0.5);  // Discount half a pixel
+        cx.line_to(256.0, y - 0.5);  // Discount half a pixel
+    }
+    for column in 0..grid[0].len() {
+        // Vertical lines
+        let x = (column as f64) * CELL_SIZE;
+        cx.move_to(x - 0.5, 0.0);  // Discount half a pixel
+        cx.line_to(x - 0.5, 256.0);  // Discount half a pixel
+    }
+
+    // Draw the border
+    cx.move_to(0.0, 0.0);
+    cx.line_to(256.0, 0.0);
+    cx.line_to(256.0, 256.0);
+    cx.line_to(0.0, 256.0);
+    cx.line_to(0.0, 0.0);
+
+    cx.stroke()
+        .expect("Should be able to stroke line");
+}
+
+fn is_in_bounds(i: usize, j: usize, grid: &[[u8; 16]]) -> bool {
+    i < grid.len() && j < grid[0].len()
 }
