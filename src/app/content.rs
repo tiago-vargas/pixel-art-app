@@ -105,24 +105,26 @@ impl SimpleComponent for ContentModel {
         let cx = self.handler.get_context();
 
         match message {
-            Self::Input::DrawEmptyGrid => (),
+            Self::Input::DrawEmptyGrid => draw(&cx, &self.grid),
             Self::Input::Paint(x, y) => {
                 let column = (x / CELL_SIZE) as usize;
                 let line = (y / CELL_SIZE) as usize;
                 self.grid[line][column] = 1;
+                paint_cell(&cx, line, column, 1);
+                draw_grid_lines(&cx, &self.grid);
             }
             Self::Input::Erase(x, y) => {
                 let column = (x / CELL_SIZE) as usize;
                 let line = (y / CELL_SIZE) as usize;
                 self.grid[line][column] = 0;
+                paint_cell(&cx, line, column, 0);
+                draw_grid_lines(&cx, &self.grid);
             }
         }
-
-        redraw(&cx, &self.grid);
     }
 }
 
-fn redraw(cx: &gtk::cairo::Context, grid: &[[u8; 16]; 16]) {
+fn draw(cx: &gtk::cairo::Context, grid: &[[u8; 16]; 16]) {
     for (i, row) in grid.iter().enumerate() {
         let y = (i as f64) * CELL_SIZE;
 
@@ -145,7 +147,10 @@ fn redraw(cx: &gtk::cairo::Context, grid: &[[u8; 16]; 16]) {
         }
     }
 
-    // Draw the grid
+    draw_grid_lines(cx, grid);
+}
+
+fn draw_grid_lines(cx: &gtk::cairo::Context, grid: &[[u8; 16]; 16]) {
     cx.set_source_rgba(0.5, 0.5, 0.5, 0.5);  // Gray
     cx.set_line_width(1.0);
     // To draw a 1-pixel wide line, you have to aim to the "center" of the pixel
@@ -164,4 +169,23 @@ fn redraw(cx: &gtk::cairo::Context, grid: &[[u8; 16]; 16]) {
     }
     cx.stroke()
         .expect("Should be able to stroke line");
+}
+
+fn paint_cell(cx: &gtk::cairo::Context, line: usize, column: usize, value: u8) {
+    let x = (column as f64) * CELL_SIZE;
+    let y = (line as f64) * CELL_SIZE;
+
+    if value == 1 {
+        // Lit
+        cx.set_source_rgb(0.0, 0.0, 0.0);  // Black
+    } else if value == 0 {
+        // Unlit
+        cx.set_source_rgb(1.0, 1.0, 1.0);  // White
+    } else {
+        unreachable!("Cell values should be either 0 or 1");
+    }
+
+    cx.rectangle(x as f64, y as f64, CELL_SIZE, CELL_SIZE);
+    cx.fill()
+        .expect("Should be able to fill cell");
 }
