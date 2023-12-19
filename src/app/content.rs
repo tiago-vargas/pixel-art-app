@@ -166,6 +166,14 @@ fn redraw(cx: &gtk::cairo::Context, grid: &[[u8; 16]; 16]) {
         cx.move_to(x - 0.5, 0.0);  // Discount half a pixel
         cx.line_to(x - 0.5, 256.0);  // Discount half a pixel
     }
+
+    // Draw the border
+    cx.move_to(0.0, 0.0);
+    cx.line_to(256.0, 0.0);
+    cx.line_to(256.0, 256.0);
+    cx.line_to(0.0, 256.0);
+    cx.line_to(0.0, 0.0);
+
     cx.stroke()
         .expect("Should be able to stroke line");
 }
