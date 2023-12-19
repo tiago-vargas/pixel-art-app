@@ -109,12 +109,16 @@ impl SimpleComponent for ContentModel {
             Self::Input::Paint(x, y) => {
                 let column = (x / CELL_SIZE) as usize;
                 let line = (y / CELL_SIZE) as usize;
-                self.grid[line][column] = 1;
+                if is_in_bounds(line, column, &self.grid) {
+                    self.grid[line][column] = 1;
+                }
             }
             Self::Input::Erase(x, y) => {
                 let column = (x / CELL_SIZE) as usize;
                 let line = (y / CELL_SIZE) as usize;
-                self.grid[line][column] = 0;
+                if is_in_bounds(line, column, &self.grid) {
+                    self.grid[line][column] = 0;
+                }
             }
         }
 
@@ -164,4 +168,8 @@ fn redraw(cx: &gtk::cairo::Context, grid: &[[u8; 16]; 16]) {
     }
     cx.stroke()
         .expect("Should be able to stroke line");
+}
+
+fn is_in_bounds(i: usize, j: usize, grid: &[[u8; 16]]) -> bool {
+    i < grid.len() && j < grid[0].len()
 }
